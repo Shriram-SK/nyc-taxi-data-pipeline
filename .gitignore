@@ -35,6 +35,7 @@ dbt/dbt_packages/
 # dbt sensitive config (real profiles.yml contains credentials)
 dbt/profiles.yml
 profiles.yml
+dbt/.user.yml
 
 # DuckDB database files (can be large, regenerated from pipeline)
 *.duckdb
