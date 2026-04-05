@@ -1,0 +1,122 @@
+version: 2
+
+# -----------------------------------------------------------------------
+# sources.yml — staging layer source declarations
+#
+# PURPOSE
+#   Declares the logical origin of raw data consumed by this project.
+#   These entries drive dbt docs lineage graphs and source freshness
+#   reporting — they do NOT replace the read_parquet() call in
+#   stg_yellow_trips.sql.
+#
+# WHY source() IS NOT USED IN stg_yellow_trips.sql
+#   DuckDB reads Parquet files via a table-function (read_parquet()),
+#   not through a catalogued database relation. dbt's source() macro
+#   resolves to a schema.table reference, which DuckDB cannot
+#   use as a Parquet file path. Declaring the source here preserves
+#   lineage metadata without requiring an external-tables package.
+#
+# FRESHNESS NOTE
+#   True file-level freshness (mtime) requires querying the OS or a
+#   metadata table. As a practical proxy, we use tpep_pickup_datetime
+#   from the Parquet data itself:  if the most recent pickup timestamp
+#   is older than warn_after, the upstream data delivery is likely late.
+#   This is a best-effort heuristic, not a guarantee of pipeline health.
+# -----------------------------------------------------------------------
+
+sources:
+
+  - name: raw_taxi
+    description: >
+      Raw NYC TLC trip record files delivered as monthly Parquet dumps.
+      Files follow the naming convention yellow_tripdata_YYYY-MM.parquet
+      and are placed in the configured input_dir before the pipeline runs.
+    meta:
+      owner: data-engineering
+      source_url: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+      # Path template — actual glob is constructed in stg_yellow_trips.sql
+      file_pattern: "input/yellow_tripdata_2023-*.parquet"
+
+    tables:
+
+      - name: yellow_trips
+        description: >
+          NYC Yellow Taxi trip records for 2023. Each row is one completed
+          trip. Columns follow the TLC data dictionary (v2.3).
+          Actual reads use read_parquet() in stg_yellow_trips.sql.
+          A surrogate key (trip_id) is derived in the staging model from
+          VendorID, tpep_pickup_datetime, and PULocationID.
+
+        # Freshness proxy: warn if the latest pickup timestamp in the data
+        # is more than 35 days old (monthly files land ~30 days after
+        # period end); error if over 65 days (two missed deliveries).
+        loaded_at_field: tpep_pickup_datetime
+        freshness:
+          warn_after:  { count: 35, period: day }
+          error_after: { count: 65, period: day }
+
+        columns:
+          - name: VendorID
+            description: "1 = Creative Mobile Technologies; 2 = VeriFone Inc."
+          - name: tpep_pickup_datetime
+            description: Meter engaged timestamp.
+          - name: tpep_dropoff_datetime
+            description: Meter disengaged timestamp.
+          - name: passenger_count
+            description: Number of passengers (driver-entered).
+          - name: trip_distance
+            description: Elapsed trip distance in miles.
+          - name: RatecodeID
+            description: >
+              Final rate code: 1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester,
+              5=Negotiated, 6=Group ride.
+          - name: store_and_fwd_flag
+            description: >
+              Y = trip record held in vehicle memory before server send;
+              N = record sent immediately.
+          - name: PULocationID
+            description: TLC taxi zone where the meter was engaged.
+          - name: DOLocationID
+            description: TLC taxi zone where the meter was disengaged.
+          - name: payment_type
+            description: >
+              1=Credit card, 2=Cash, 3=No charge, 4=Dispute,
+              5=Unknown, 6=Voided trip.
+          - name: fare_amount
+            description: Time-and-distance fare calculated by the meter.
+          - name: extra
+            description: Miscellaneous extras (rush hour / overnight surcharges).
+          - name: mta_tax
+            description: $0.50 MTA tax triggered by metered rate.
+          - name: tip_amount
+            description: Credit card tips only; cash tips not captured.
+          - name: tolls_amount
+            description: Total tolls paid during the trip.
+          - name: improvement_surcharge
+            description: $0.30 surcharge on hailed trips at flag drop.
+          - name: total_amount
+            description: Total charged to passengers (excludes cash tips).
+          - name: congestion_surcharge
+            description: NYS congestion surcharge for trips in/from Manhattan south of 96th St.
+          - name: airport_fee
+            description: $1.25 pickup fee at LGA/JFK; added mid-2022.
+
+      - name: taxi_zone_lookup
+        description: >
+          Static TLC reference table mapping LocationID (1–265) to borough,
+          zone name, and service zone classification. Loaded as a dbt seed;
+          declared here for lineage completeness.
+          Actual reads use ref('taxi_zone_lookup') in stg_taxi_zones.sql.
+
+        # Static reference data — freshness checking not meaningful.
+        freshness: null
+
+        columns:
+          - name: LocationID
+            description: Unique TLC zone identifier (1–265).
+          - name: Borough
+            description: NYC borough or "EWR" for Newark.
+          - name: Zone
+            description: Human-readable zone name.
+          - name: service_zone
+            description: "'Boro Zone', 'Yellow Zone', 'Airports', or 'EWR'."

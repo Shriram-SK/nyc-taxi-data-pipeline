@@ -1,0 +1,26 @@
+version: 2
+
+models:
+
+  - name: stg_yellow_trips
+    description: >
+      Staged NYC Yellow Taxi trip records. One row per raw trip.
+      Columns are renamed to snake_case, cast to correct types,
+      and enriched with trip_id (surrogate key) and trip_duration_minutes.
+
+    columns:
+
+      - name: trip_id
+        description: >
+          MD5 surrogate key derived from vendor_id, pickup_datetime,
+          and pickup_location_id. Best-effort identifier — not guaranteed
+          unique when two trips share the same vendor, second-level timestamp,
+          and pickup zone (observed in high-volume locations).
+          A unique test is intentionally omitted for this reason.
+        data_tests:
+          - not_null
+
+  - name: stg_taxi_zones
+    description: >
+      TLC taxi zone reference data. 265 rows covering all NYC boroughs,
+      EWR, and unknown zones. Source is the taxi_zone_lookup seed.

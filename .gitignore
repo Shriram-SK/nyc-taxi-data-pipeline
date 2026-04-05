@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------
+# .gitignore — NYC Taxi Data Engineering Pipeline
+# ---------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# dbt artifacts (generated, not source-controlled)
+target/
+dbt_packages/
+dbt/target/
+dbt/dbt_packages/
+
+# dbt sensitive config (real profiles.yml contains credentials)
+dbt/profiles.yml
+profiles.yml
+
+# DuckDB database files (can be large, regenerated from pipeline)
+*.duckdb
+*.duckdb.wal
+
+# Airflow
+logs/
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+standalone_admin_password.txt
+
+# Large data / raw input files
+input/*.parquet
+input/*.csv
+input/*.json
+input/*.gz
+input/*.zip
+!input/.gitkeep
+*.log
+
+# Spark
+spark/derby.log
+metastore_db/
+
+# Docker
+.env
+
+# OS
+.DS_Store
+Thumbs.db

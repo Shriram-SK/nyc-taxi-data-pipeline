@@ -1,0 +1,79 @@
+name: nyc_taxi
+version: "1.0.0"
+config-version: 2
+
+# Profile to use — must match a key in profiles.yml
+profile: nyc_taxi
+
+# Relative paths from dbt_project.yml
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"      # compiled artifacts
+clean-targets: ["target", "dbt_packages"]
+
+# ---------------------------------------------------------------
+# Quoting — DuckDB stores identifiers in lowercase by default.
+# Disabling quoting prevents "relation not found" errors caused
+# by case mismatches between compiled SQL and the actual schema.
+# ---------------------------------------------------------------
+quoting:
+  database: false
+  schema: false
+  identifier: false
+
+# ---------------------------------------------------------------
+# Global model configurations
+# ---------------------------------------------------------------
+models:
+  nyc_taxi:
+    # Project-wide default: any model not matched by a sublayer
+    # config below falls back to a view.
+    # NOTE: do NOT set +database here — dbt-duckdb derives the catalog
+    # name from the .duckdb filename (nyc_taxi). Hardcoding "main" causes
+    # a "Catalog does not exist" error at runtime.
+    +materialized: view
+
+    # Staging: raw source data, minimal transformation
+    staging:
+      +materialized: view
+      +schema: staging
+
+    # Intermediate: business-logic joins and reshaping
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+
+    # Marts: final analytics-ready tables exposed to consumers
+    marts:
+      +materialized: table
+      +schema: marts
+
+# ---------------------------------------------------------------
+# Seed configurations
+# ---------------------------------------------------------------
+seeds:
+  nyc_taxi:
+    +schema: seeds
+    taxi_zone_lookup:
+      +column_types:
+        LocationID: integer
+        Borough: varchar
+        Zone: varchar
+        service_zone: varchar
+
+# ---------------------------------------------------------------
+# Variables (override with --vars at runtime)
+# ---------------------------------------------------------------
+vars:
+  start_date: "2023-01-01"
+  end_date: "2023-12-31"
+  # Base directory for raw Parquet input files.
+  # Use absolute path so DuckDB's read_parquet() glob resolves correctly
+  # regardless of which directory dbt is invoked from.
+  # Override for local dev: dbt run --vars '{"input_dir": "C:/Users/shrir/Desktop/Firmable/input"}'
+  input_dir: "/opt/airflow/data/input"

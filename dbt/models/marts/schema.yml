@@ -1,0 +1,33 @@
+version: 2
+
+models:
+
+  - name: dim_zones
+    description: >
+      Zone dimension table. One row per TLC location ID (1–265).
+      Sourced directly from stg_taxi_zones to guarantee all zones
+      are present regardless of trip coverage in the current period.
+
+    columns:
+
+      - name: location_id
+        description: TLC location identifier. Primary key.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: fct_trips
+    description: >
+      Core fact table. One row per valid, zone-enriched trip.
+      Pass-through of int_trips_enriched — all filtering and
+      derivation happens in the intermediate layer.
+
+    columns:
+
+      - name: trip_id
+        description: >
+          Surrogate key inherited from stg_yellow_trips. Not guaranteed
+          unique (see stg_yellow_trips.trip_id note). not_null is tested
+          to confirm the hash never produced a null output.
+        data_tests:
+          - not_null
