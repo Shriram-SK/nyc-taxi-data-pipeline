@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------
+# profiles.yml.example
+#
+# Copy this file to ~/.dbt/profiles.yml (or set DBT_PROFILES_DIR)
+# and adjust the path to your local DuckDB database file.
+#
+# DuckDB is file-based; the `path` key points to a .duckdb file
+# that will be created automatically on first run.
+# ---------------------------------------------------------------
+
+nyc_taxi:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "/opt/airflow/data/db/nyc_taxi.duckdb"
+      threads: 1
+      schema: main
+      database: nyc_taxi
+      settings:
+        memory_limit: "1.8GB"
+        temp_directory: "/opt/airflow/data/db/duckdb_tmp"
+
+    prod:
+      type: duckdb
+      # In production point to a shared / mounted path
+      path: "{{ env_var('DUCKDB_PATH') }}"
+      threads: 8
+      schema: main
